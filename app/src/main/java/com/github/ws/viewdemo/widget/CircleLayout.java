@@ -1,4 +1,4 @@
-package com.github.ws.viewdemo;
+package com.github.ws.viewdemo.widget;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -15,7 +15,7 @@ import android.widget.Toast;
 /**
  * Created by Administrator on 3/9 0009.
  */
-public class MyViewGroup extends ViewGroup {
+public class CircleLayout extends ViewGroup {
 
     private Handler handler = new Handler() {
         @Override
@@ -36,11 +36,11 @@ public class MyViewGroup extends ViewGroup {
         }
     };
 
-    public MyViewGroup(Context context) {
+    public CircleLayout(Context context) {
         super(context);
     }
 
-    public MyViewGroup(Context context, AttributeSet attrs) {
+    public CircleLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
 
@@ -83,7 +83,7 @@ public class MyViewGroup extends ViewGroup {
 
             paint.setColor(Color.parseColor("#dddddd"));
 
-            canvas.drawCircle(getWidth() / 2 + x, getHeight() / 2 - y, 50, paint);
+            canvas.drawCircle(getWidth() / 2 + x, getHeight() / 2 - y, 20, paint);
         }
 
     }
@@ -123,7 +123,7 @@ public class MyViewGroup extends ViewGroup {
                     long timeStamp = System.currentTimeMillis() - lastClickTime;
                     float distance = (float) Math.sqrt((x1 - x) * (x1 - x) + (y1 - y) * (y1 - y));
                     float speed = distance / timeStamp;
-                    Log.e("------------", "-------speed--------***" + speed + "****" + distance);
+                    // Log.e("------------", "-------speed--------***" + speed + "****" + distance);
                     if (x1 - x > 0) {
                         isLeft = false;
                     } else {
@@ -140,7 +140,7 @@ public class MyViewGroup extends ViewGroup {
     private float speed = 0;
 
     public void speed(float speed) {
-        this.speed = speed * 3;
+        this.speed = speed * 6;
         handler.sendEmptyMessage(1);
     }
 

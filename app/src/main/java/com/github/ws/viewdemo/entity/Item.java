@@ -1,4 +1,4 @@
-package com.github.ws.viewdemo;
+package com.github.ws.viewdemo.entity;
 
 /**
  * Created by Administrator on 3/10 0010.
