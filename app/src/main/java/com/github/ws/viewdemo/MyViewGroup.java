@@ -38,18 +38,14 @@ public class MyViewGroup extends ViewGroup {
 
     public MyViewGroup(Context context) {
         super(context);
-
     }
 
     public MyViewGroup(Context context, AttributeSet attrs) {
         super(context, attrs);
-
     }
 
     @Override
     protected void onLayout(boolean b, int i, int i1, int i2, int i3) {
-
-
         // Log.e("------------", "-------onLayout--------" + i + "----" + i1 + "----" + i2 + "----------" + i3);
 
     }
@@ -81,23 +77,18 @@ public class MyViewGroup extends ViewGroup {
         for (int i = 0; i < 12; i++) {
             int x = (int) Math.round(Math.sin(Math.toRadians(30 * (i + 1) - degree)) * radius);
 
-
             int y = (int) Math.round(Math.cos(Math.toRadians(30 * (i + 1) - degree)) * radius);
 
-
             canvas.drawLine(getWidth() / 2, getHeight() / 2, getWidth() / 2 + x, getHeight() / 2 - y, paint);
-
 
             paint.setColor(Color.parseColor("#dddddd"));
 
             canvas.drawCircle(getWidth() / 2 + x, getHeight() / 2 - y, 50, paint);
-
         }
 
     }
 
     //  速度  时间  关系      非常感谢  我的同事 小贾   刚开始我还想用重力加速度   根本没必要哈
-
 
     //存时间
     private long lastClickTime;
@@ -110,58 +101,39 @@ public class MyViewGroup extends ViewGroup {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-
-
         switch (event.getAction()) {
-
             case MotionEvent.ACTION_DOWN:
                 // radius += 50;
                 //碰撞   计算距离
                 x = event.getX();
                 y = event.getY();
-
                 if ((x - getWidth() / 2) * (x - getWidth() / 2) + (y - getHeight() / 2) * (y - getHeight() / 2) < (radius + 10) * (radius + 10)) {
                     isRange = true;
                     lastClickTime = System.currentTimeMillis();
                 } else {
                     isRange = false;
                 }
-
-
                 break;
             case MotionEvent.ACTION_MOVE:
-
-
                 break;
             case MotionEvent.ACTION_UP:
-
                 float x1 = event.getX();
                 float y1 = event.getY();
-
                 if (isRange) {
-
                     long timeStamp = System.currentTimeMillis() - lastClickTime;
-
                     float distance = (float) Math.sqrt((x1 - x) * (x1 - x) + (y1 - y) * (y1 - y));
-
                     float speed = distance / timeStamp;
-
                     Log.e("------------", "-------speed--------***" + speed + "****" + distance);
-
                     if (x1 - x > 0) {
                         isLeft = false;
                     } else {
                         isLeft = true;
                     }
                     // invalidate();
-
                     speed(speed);
                 }
-
                 break;
         }
-
-
         return true;
     }
 

@@ -11,10 +11,12 @@ import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.ListAdapter;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -24,58 +26,57 @@ import java.util.List;
  * Created by Administrator on 3/10 0010.
  */
 public class CircleMenuLayout extends ViewGroup {
-
-    private Context context;
-
-
     //圆形半径
     private int mRadius;
-
-    // 布局时的开始角度
+    //开始角度
     private double mStartAngle = 0;
-
-    //数据源
-    List<Item> mList = new ArrayList<>();
-
-
-    // 菜单布局资源id  默认布局
-    private int mMenuItemLayoutId = R.layout.circle_menu_item;
-
-    // MenuItem的点击事件接口
-    private OnItemClickListener mOnMenuItemClickListener;
-
-
-    // 该容器内item 的默认尺寸
-    private static final float ITEM_DIMENSION = 1 / 3f;
-
-    //转动快慢  测试3比较流畅
-    private static final int ROTATION_DEGREE = 3;
-
     //padding属性  默认值为0
     private float mPadding = 0;
-
-    //每次item转动的角度
-    private int rotationAngle = 0;
-
+    //滑动时 item偏移量
     private int offsetRotation = 0;
-
-    //最后一次点击时间
-    private long lastClickTime;
-
+    //最后一次触摸
+    private long lastTouchTime;
     //判断触摸点  是否在圆类   默认false
     boolean isRange = false;
-
-    //手指触摸的想x,y值
+    //手指触摸的x,y值
     float x = 0, y = 0;
-
     // 手指滑动的方向   默认向右
     boolean isLeft = false;
-
+    //适配
+    private ListAdapter mAdapter;
+    //转动速度 默认速度为0
+    private float speed = 0;
+    // 每个item 的默认尺寸
+    private static final float ITEM_DIMENSION = 1 / 3f;
+    //转动快慢
+    private static final int ROTATION_DEGREE = 3;
+    //distanceFromCenter Item到中心的距离
+    private static final float DISTANCE_FROM_CENTER = 2 / 3f;
+    //speed attenuation 速度衰减
+    private static final int SPEED_ATTENUATION = 1;
+    //每次转动的角度
+    private static final int ANGLE = 6;
+    //消息
+    private static final int EMPTY_MESSAGE = 1;
+    // MenuItem的点击事件接口
+    private OnItemClickListener mOnMenuItemClickListener;
     //线程  处理item的转动
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
+            if (msg.what == EMPTY_MESSAGE) {
+                if (speed > 0) {
+                    if (isLeft) {
+                        offsetRotation -= ANGLE;
+                    } else {
+                        offsetRotation += ANGLE;
+                    }
+                    speed -= SPEED_ATTENUATION;
+                    invalidate();
+                    handler.sendEmptyMessageDelayed(EMPTY_MESSAGE, 50);
+                }
+            }
         }
     };
 
@@ -85,7 +86,6 @@ public class CircleMenuLayout extends ViewGroup {
      */
     public CircleMenuLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
-        this.context = context;
         setPadding(0, 0, 0, 0);
     }
 
@@ -94,57 +94,42 @@ public class CircleMenuLayout extends ViewGroup {
      */
     public CircleMenuLayout(Context context) {
         super(context);
-        this.context = context;
         setPadding(0, 0, 0, 0);
     }
 
-    //设置数据源
-    public void setCircleMenuItemData(List<Item> mList) {
-        this.mList = mList;
-        buildMenuItems();
+    public void setAdapter(ListAdapter mAdapter) {
+        this.mAdapter = mAdapter;
     }
 
     // 构建菜单项
     private void buildMenuItems() {
         // 根据用户设置的参数，初始化menu item
-        if (mList == null) {
-            throw new IllegalArgumentException("数据源为空");
-        } else {
-            for (int i = 0; i < mList.size(); i++) {
-                View itemView = inflateMenuView(i);
-                // 初始化菜单项
-                initMenuItem(itemView, i);
-                // 添加view到容器中
-                addView(itemView);
+        for (int i = 0; i < mAdapter.getCount(); i++) {
+            final View itemView = mAdapter.getView(i, null, this);
+            final int position = i;
+            if (itemView != null) {
+                itemView.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (mOnMenuItemClickListener != null) {
+                            mOnMenuItemClickListener.onItemClickListener(itemView, position);
+                        }
+                    }
+                });
             }
+            // 添加view到容器中
+            addView(itemView);
         }
     }
 
-    private void initMenuItem(View itemView, int childIndex) {
-        ImageView iv = (ImageView) itemView
-                .findViewById(R.id.iv_icon);
-        TextView tv = (TextView) itemView
-                .findViewById(R.id.tv_text);
-        iv.setVisibility(View.VISIBLE);
-        iv.setImageResource(mList.get(childIndex).imageRes);
-        tv.setVisibility(View.VISIBLE);
-        tv.setText(mList.get(childIndex).text);
+    //窗口关联
+    @Override
+    protected void onAttachedToWindow() {
+        if (mAdapter != null) {
+            buildMenuItems();
+        }
+        super.onAttachedToWindow();
     }
-
-    private View inflateMenuView(final int childIndex) {
-        LayoutInflater mInflater = LayoutInflater.from(getContext());
-        View itemView = mInflater.inflate(mMenuItemLayoutId, this, false);
-        itemView.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mOnMenuItemClickListener != null) {
-                    mOnMenuItemClickListener.onItemClickListener(v, childIndex);
-                }
-            }
-        });
-        return itemView;
-    }
-
 
     //设置布局的宽高，并策略menu item宽高
     @Override
@@ -155,7 +140,6 @@ public class CircleMenuLayout extends ViewGroup {
         measureChildViews();
     }
 
-
     private void measureMyself(int widthMeasureSpec, int heightMeasureSpec) {
         int resWidth = 0;
         int resHeight = 0;
@@ -164,7 +148,6 @@ public class CircleMenuLayout extends ViewGroup {
         int widthMode = MeasureSpec.getMode(widthMeasureSpec);
         int height = MeasureSpec.getSize(heightMeasureSpec);
         int heightMode = MeasureSpec.getMode(heightMeasureSpec);
-
         // 如果宽或者高的测量模式非精确值
         if (widthMode != MeasureSpec.EXACTLY
                 || heightMode != MeasureSpec.EXACTLY) {
@@ -180,12 +163,10 @@ public class CircleMenuLayout extends ViewGroup {
             // 如果都设置为精确值，则直接取小值；
             resWidth = resHeight = Math.min(width, height);
         }
-
         setMeasuredDimension(resWidth, resHeight);
     }
 
     private void measureChildViews() {
-
         // 获得半径
         mRadius = Math.min(getMeasuredWidth(), getMeasuredHeight()) / 2;
         // menu item数量
@@ -211,18 +192,23 @@ public class CircleMenuLayout extends ViewGroup {
     // 布局menu item的位置
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        refresh();
+    }
+
+    //刷新  偏移角度移动item
+    public void refresh() {
         final int childCount = getChildCount();
         // 根据menu item的个数，计算item的布局占用的角度
         float angleDelay = 360 / childCount;
         // 遍历所有菜单项设置它们的位置
         for (int i = 0; i < childCount; i++) {
             final View child = getChildAt(i);
-
-            int x = (int) Math.round(Math.sin(Math.toRadians(angleDelay * (i + 1) - offsetRotation)) * (mRadius * 2 / 3));
-
-            int y = (int) Math.round(Math.cos(Math.toRadians(angleDelay * (i + 1) - offsetRotation)) * (mRadius * 2 / 3));
-
-
+            if (child.getVisibility() == GONE) {
+                continue;
+            }
+            int x = (int) Math.round(Math.sin(Math.toRadians(angleDelay * (i + 1) - offsetRotation)) * (mRadius * DISTANCE_FROM_CENTER));
+            int y = (int) Math.round(Math.cos(Math.toRadians(angleDelay * (i + 1) - offsetRotation)) * (mRadius * DISTANCE_FROM_CENTER));
+            //计算item 距离左边距  上边距 的距离
             if (x <= 0 && y >= 0) {
                 x = mRadius - Math.abs(x);
                 y = mRadius - y;
@@ -236,31 +222,63 @@ public class CircleMenuLayout extends ViewGroup {
                 x = mRadius + x;
                 y = mRadius - Math.abs(y);
             }
-
+            //计算item中心点 距离左边距  上边距 的距离
             x = x - (int) (mRadius * ITEM_DIMENSION) / 2;
-            y = y -(int) (mRadius * ITEM_DIMENSION) / 2;
-
-            Log.e("------------", "-------------***" + x + "**************" + y + "----" + childCount);
-
+            y = y - (int) (mRadius * ITEM_DIMENSION) / 2;
             // 布局child view
             child.layout(x, y,
                     x + (int) (mRadius * ITEM_DIMENSION), y + (int) (mRadius * ITEM_DIMENSION));
-
-
         }
+    }
 
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                //碰撞 手指与大圆的碰撞   计算距离
+                x = event.getX();
+                y = event.getY();
+                //手指与大圆触摸的误差
+                int error = 10;
+                if ((x - mRadius) * (x - mRadius) + (y - mRadius) * (y - mRadius) < (mRadius + error) * (mRadius + error)) {
+                    isRange = true;
+                    lastTouchTime = System.currentTimeMillis();
+                } else {
+                    isRange = false;
+                }
+                break;
+            case MotionEvent.ACTION_MOVE:
+                break;
+            case MotionEvent.ACTION_UP:
+                float x1 = event.getX();
+                float y1 = event.getY();
+                if (isRange) {
+                    long timeStamp = System.currentTimeMillis() - lastTouchTime;
+                    float distance = (float) Math.sqrt((x1 - x) * (x1 - x) + (y1 - y) * (y1 - y));
+                    float speed = distance / timeStamp;
+                    if (x1 - x > 0) {
+                        isLeft = false;
+                    } else {
+                        isLeft = true;
+                    }
+                    //计算速度
+                    speed(speed);
+                }
+                break;
+        }
+        return true;
+    }
+
+    public void speed(float speed) {
+        this.speed = speed * ROTATION_DEGREE;
+        handler.sendEmptyMessage(EMPTY_MESSAGE);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        refresh();
     }
-
-    // 设置MenuItem的布局文件，必须在setCircleMenuItemData之前调用
-    public void setMenuItemLayoutId(int mMenuItemLayoutId) {
-        this.mMenuItemLayoutId = mMenuItemLayoutId;
-    }
-
 
     //定义点击接口
     public interface OnItemClickListener {
@@ -284,5 +302,4 @@ public class CircleMenuLayout extends ViewGroup {
         wm.getDefaultDisplay().getMetrics(outMetrics);
         return Math.min(outMetrics.widthPixels, outMetrics.heightPixels);
     }
-
 }
